@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+        <style>
+            /* CSS styling for the table */
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+            th, td {
+                padding: 8px;
+                text-align: left;
+                border-bottom: 1px solid #ddd;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+     
+            /* CSS styling for the form */
+            form {
+                margin-top: 20px;
+            }
+            label {
+                display: block;
+                margin-bottom: 8px;
+            }
+            input[type="text"] {
+                padding: 4px;
+            }
+            button[type="submit"], button.delete-button {
+                padding: 8px;
+                margin-top: 8px;
+            }
+        </style>
+    </head>
+    <body>
+       <main> 
+        <form id="addUserForm">
+            <label for="firstName">First Name: </label>
+            <input type="text" id="firstname-input">
+            <br><br>
+            <label for="lastName">Last Name: </label>
+            <input type="text" id="lastname-input">
+            <br>
+            <button type="submit" id="addStudent">Add Student</button>
+            <br><br>
+            <button id="queryButton">Fetch Data</button>
+        </form>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Delete</th>
+                    <th>Edit</th>
+                </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+        </table>
+       </main>
+       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+       <script>
+        $(document).ready(function() {
+           $('#queryButton').click(function() {
+               $.get('/data', function(data) {
+                   // Update the table with the queried data
+                   var tableBody = '';
+                   data.forEach(function(row) {
+                       tableBody += '<tr>';
+                       tableBody += '<td>' + row.id + '</td>';
+                       tableBody += '<td><input type="text" class="edit-input" data-id="' + row.id + '" value="' + row.first_name + '"></td>';
+                       tableBody += '<td><input type="text" class="edit-input" data-id="' + row.id + '" value="' + row.last_name + '"></td>';
+                       tableBody += '<td><button class="delete-button" data-id="' + row.id + '">Delete</button></td>';
+                       tableBody += '<td><button class="update-button" data-id="' + row.id + '">update</button></td>';
+                       tableBody += '</tr>';
+                   });
+                   $('#dataTable tbody').html(tableBody);
+               }).fail(function() {
+                   alert('Error occurred while querying data.');
+               });
+           });
+
+           $('#addUserForm').submit(function(event) {
+            event.preventDefault(); //cancels the event if possible -- default event will not occur 
+
+           var firstName = $('#firstName').val(); //setting the value attributes of selected elements 
+           var lastName = $('#lastName').val();
+
+           if (firstName && lastName) {
+            $.post('/data', {firstName: firstName, lastName: lastName}, function() {
+                alert('User added successfully');
+
+                $('#firstName').val('');
+                $('#lastName').val('');
+
+                $('#queryButton').trigger('click');
+            }).fail(function(response) {
+                alert('Error: ' + response.responseJSON.error);
+            });
+           } else {
+            //alert('Must provide both the first and last name');
+           }
+        });
+
+        $('#dataTable').on('click', '.delete-button', function() {
+            var userId = $(this).data('id');
+            var confirmation = confirm('Are you sure you want to delete the user?')
+            if (confirmation) {
+                $.ajax({
+                    url: '/data/' + userId,
+                    type: 'DELETE',
+                    success: function() {
+                        alert('User deleted');
+                        $('#queryButton').trigger('click');
+                    },
+                    error: function() {
+                        alert('Error occured while deleting the user');
+                    }
+                });
+            }
+        });
+    });
+    $('#dataTable').on('click', '.update-button', function() {
+               var userId = $(this).data('id');
+               var updatedFirstName = $('#dataTable input[data-id="' + userId + '"].edit-input:nth-of-type(1)').val();
+               var updatedLastName = $('#dataTable input[data-id="' + userId + '"].edit-input:nth-of-type(2)').val();
+
+               // Check if the data has been modified
+               if (updatedFirstName !== '' && updatedLastName !== '') {
+                   // Send an AJAX request to update the data
+                   $.ajax({
+                       url: '/data/' + userId,
+                       type: 'PUT',
+                       data: { firstName: updatedFirstName, lastName: updatedLastName },
+                       success: function() {
+                           alert('User updated successfully');
+                           // Refresh the table
+                           $('#queryButton').trigger('click');
+                       },
+                        error: function() {
+                           alert('Error occurred while updating user');
+                       }
+                   });
+               } else {
+                   alert('Please provide both first name and last name');
+               }
+           });
+
+       </script>
+    </body>
+</html>
